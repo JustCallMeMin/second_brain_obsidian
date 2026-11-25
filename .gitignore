@@ -1,0 +1,17 @@
+# Captures and originals (kept local, never committed)
+inbox/*
+!inbox/.gitkeep
+
+# Secrets
+.env*
+*.pem
+*.key
+/credentials*
+/secrets*
+
+# App-managed and machine-local state
+.claude/settings.local.json
+.obsidian/workspace*.json
+.obsidian/cache
+.DS_Store
+__pycache__/
