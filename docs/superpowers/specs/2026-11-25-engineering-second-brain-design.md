@@ -278,7 +278,7 @@ Claims backed only by a source are reported as source material, not as establish
 
 ### 6.8 `scripts/kb.py`
 
-**Common:** vault root = parent of `scripts/` unless `--root`. Exit codes: `0` success; `1` lint found errors, or `backlinks` target not found and has no inbound links; `2` usage or internal error (unreadable or non-vault root, bad flags, crash). A non-UTF-8 file never causes exit 2 (W11). `--json` on `lint` and `search`.
+**Common:** vault root = parent of `scripts/` unless `--root`. Exit codes: `0` success; `1` lint found errors, or `backlinks` target not found and has no inbound links; `2` usage or internal error (unreadable or non-vault root, bad flags, crash). A non-UTF-8 file or an unreadable file in `inbox/` never causes exit 2 (W11); an unreadable file anywhere else does. `--json` on `lint` and `search`.
 
 **`lint [--stale-days N] [--inbox-days N] [--pending FILENAME] [--json]`** (defaults 365 and 14 **(user)**). Never modifies files. Levels, always shown separately: **ERROR**, **WARNING**, **REVIEW**, and **PENDING** (only with `--pending`). Exit 1 iff any ERROR. Every finding has `code`, `level`, `path`, `line`, `detail`, `id` (`code|path|detail|n`, no line number, `n` = occurrence of that code, path and detail so a second identical problem gets a new id). The thresholds only produce warnings or review items; they never trigger edits, deletion or archiving **(user)**.
 
@@ -302,7 +302,7 @@ Claims backed only by a source are reported as source material, not as establish
 | W08 | WARNING | Capture whose basename collides with a scanned file |
 | W09 | WARNING | Unverified block reference |
 | W10 | WARNING | Markdown file outside `inbox/` with no frontmatter at all |
-| W11 | WARNING | A `.md` file that is not valid UTF-8 (in `inbox/` or any scanned folder; binary files and non-UTF-8 `.txt` do not warn). Content checks are skipped for it and lint never crashes on it **(my call: so a bad capture cannot abort the baseline run)** |
+| W11 | WARNING | Content checks were skipped for a file: a `.md` that is not valid UTF-8 (in `inbox/` or any scanned folder; binary files and non-UTF-8 `.txt` do not warn), or any file in `inbox/` (including `inbox/processed/`) that cannot be read, such as a permission error. Lint never crashes on either and the unreadable file is never opened, scanned or hashed **(my call: so a bad capture cannot abort the baseline run; an unreadable capture is an isolated failure, never a run-level stop)**. An unreadable file outside `inbox/` is not W11: lint exits 2 |
 | R01 | REVIEW | `updated` older than `--stale-days` (types `note`, `topic`, `project`, `decision`; sources are exempt **(user)**). Message states: `updated` is the last knowledge-text or link change, and stale means "needs human review", not "obsolete or incorrect" |
 | R02 | REVIEW | `standalone: true` on a note that already has inbound links |
 
@@ -369,7 +369,7 @@ Drafts: `draft/docs/adr/`. "ADR" is reserved for these records; project choices 
 
 **Automated (`unittest` on `kb.py`)**
 1. Every rule E01-E08, W01-W11, R01-R02 fires on a purpose-built bad file; each E02 condition has its own case; clean vault exits 0, one error exits 1.
-2. W10 (no frontmatter) is a warning and exits 0; an empty, half-complete or unterminated frontmatter block is an error and exits 1; E01/E02 never fire inside `inbox/`; a non-UTF-8 `.md` in `inbox/` or `notes/` yields W11, never exit 2, and lint does not crash; a PDF or non-UTF-8 `.txt` yields no W11; hidden files (`.gitkeep`, `.DS_Store`) in every scanned folder raise nothing, so a bare scaffold lints clean, and the M0 `index.md` (`type: topic`, valid dates) raises no E02.
+2. W10 (no frontmatter) is a warning and exits 0; an empty, half-complete or unterminated frontmatter block is an error and exits 1; E01/E02 never fire inside `inbox/`; a non-UTF-8 `.md` in `inbox/` or `notes/`, or an unreadable file in `inbox/`, yields W11, never exit 2, and lint does not crash (an unreadable file in `notes/`, `sources/` or `projects/` exits 2); a PDF or non-UTF-8 `.txt` yields no W11; hidden files (`.gitkeep`, `.DS_Store`) in every scanned folder raise nothing, so a bare scaffold lints clean, and the M0 `index.md` (`type: topic`, valid dates) raises no E02.
 3. `--pending X.pdf` turns E04 into PENDING for every link form of that target (`[[X.pdf]]`, `![[X.pdf]]`, `[[X.pdf#page=2]]`, `[[X.pdf|text]]`, `[[sources/X.pdf]]`, different case), in one note or several, and a companion's E08 for `X.pdf` into PENDING, all counted as one target; every other unresolved target or companion reference stays an ERROR; `--pending x.txt` is accepted; `--pending Foo` (no extension), `--pending Foo.md`, `--pending Foo.MD` and a second `--pending` exit 2.
 4. A finding's `id` is unchanged when lines shift, and a second identical problem in the same file gets a different `id`.
 5. A source whose verbatim body contains `[[missing]]` raises no E04/E05; a broken link in its frontmatter does.
